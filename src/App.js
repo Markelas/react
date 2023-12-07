@@ -12,38 +12,29 @@ import {usePosts} from "./hooks/usePosts";
 import PostService from "./API/PostService";
 import Loader from "./components/UI/Loader/Loader";
 import {useFetching} from "./hooks/useFetching"
+import {getPageCount, getPagesArray} from "./utils/pages"
 
 function App() {
 
 
     const [posts, setPosts] = useState([])
-
-
-    // const [title, setTitle] = useState('')
-    // const [body, setBody] = useState('')
-
-
-    // const bodyInputRef = useRef(); //Получаем доступ к DOM элементу и с него получаем value
-
     const [filter, setFilter] = useState({sort: '', query: ''})
     const [modal, setModal] = useState(false);
     const sortedAndSeacrchedPosts = usePosts(posts, filter.sort, filter.query)
-
-    const [totalCount, setTotalCount] = useState(0) //Для пагинации используем общее количество постов
+    const [totalPages, setTotalPages] = useState(0) //Для пагинации используем общее количество постов
     const [limit, setLimit] = useState(10) //Для пагинации лимит постов
     const [page, setPage] = useState(1) //Для пагинации страница
 
-
     const [fetchPosts, isPostsLoading, postError] = useFetching(async ()=> {
-        const response = await PostService.getAll(); //В отдельном файле PostService создали функцию для запроса
+        const response = await PostService.getAll(limit, page); //В отдельном файле PostService создали функцию для запроса
         setPosts(response.data) //Передаем эти посты
-        console.log(response.headers['x-total-count'])
-        setTotalCount(response.headers['x-total-count']) //Передаем количество постов
+        const totalCount =  response.headers['x-total-count']
+        setTotalPages(getPageCount(totalCount, limit)) //Передаем количество постов
     })
 
     useEffect(() => {
         fetchPosts().then(r => r)
-    }, []); //Массив зависимости у нас пустой, чтобы функция отработала один раз, а так, если туда передавать, то будет вызываться при изменении
+    }, [page]); //Массив зависимости у нас пустой, чтобы функция отработала один раз, а так, если туда передавать, то будет вызываться при изменении
     // С зависимостями похоже на watch из vue. В deps можно передавать несколько параметров
 
     const createPost = (newPost) => {
@@ -59,6 +50,12 @@ function App() {
         //Используем filter, который возвращает новый массив, отфильтрованный по какому-либо условию
         //Здесь мы проверяем id, если id элемента совпадает с id с тем, который мы передали с постом
         //Тогда удаляем его
+    }
+
+    let pagesArray = getPagesArray(totalPages)
+
+    const changePage = (page) => {
+        setPage(page)
     }
 
     return (
@@ -95,7 +92,18 @@ function App() {
                     title="Посты про языки программирования"
                 />
             }
-
+            {/*Выводим пагинацию*/}
+            <div className="page__wrapper">
+                {pagesArray.map(p=>
+                <span
+                    onClick={() => changePage(p)}
+                    className={page === p ? "page page__current" : "page"}
+                    key={p}
+                >
+                    {p}
+                </span>
+                )}
+            </div>
         </div>
     );
 }
