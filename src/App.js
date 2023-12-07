@@ -11,6 +11,7 @@ import MyButton from "./components/UI/button/MyButton";
 import {usePosts} from "./hooks/usePosts";
 import PostService from "./API/PostService";
 import Loader from "./components/UI/Loader/Loader";
+import {useFetching} from "./hooks/useFetching"
 
 function App() {
 
@@ -25,10 +26,20 @@ function App() {
     // const bodyInputRef = useRef(); //Получаем доступ к DOM элементу и с него получаем value
 
     const [filter, setFilter] = useState({sort: '', query: ''})
-
     const [modal, setModal] = useState(false);
     const sortedAndSeacrchedPosts = usePosts(posts, filter.sort, filter.query)
-    const [isPostsLoading, setIsPostsLoading] = useState(false) //Для лоадинга
+
+    const [totalCount, setTotalCount] = useState(0) //Для пагинации используем общее количество постов
+    const [limit, setLimit] = useState(10) //Для пагинации лимит постов
+    const [page, setPage] = useState(1) //Для пагинации страница
+
+
+    const [fetchPosts, isPostsLoading, postError] = useFetching(async ()=> {
+        const response = await PostService.getAll(); //В отдельном файле PostService создали функцию для запроса
+        setPosts(response.data) //Передаем эти посты
+        console.log(response.headers['x-total-count'])
+        setTotalCount(response.headers['x-total-count']) //Передаем количество постов
+    })
 
     useEffect(() => {
         fetchPosts().then(r => r)
@@ -50,12 +61,6 @@ function App() {
         //Тогда удаляем его
     }
 
-    async function fetchPosts() {
-        setIsPostsLoading(true) //Лоадинг
-        const posts = await PostService.getAll(); //В отдельном файле PostService создали функцию для запроса
-        setPosts(posts) //Передаем эти посты
-        setIsPostsLoading(false) //Убираем лоадинг
-    }
     return (
         <div className="App">
             <Counter/>
@@ -79,6 +84,9 @@ function App() {
                 filter={filter}
                 setFilter={setFilter}
             />
+            {postError &&
+                <h1>Произошла ошибка ${postError}</h1>
+            }
             {isPostsLoading
             ? <div style={{display: 'flex', justifyContent: 'center', marginTop: '50px'}}><Loader/></div>
             : <PostList
