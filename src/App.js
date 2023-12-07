@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import Counter from "./components/Counter";
 import ClassCounter from "./components/ClassCounter";
 import '../src/styles/app.css'
@@ -8,8 +8,9 @@ import PostForm from "./components/PostForm";
 import PostFilter from "./components/PostFilter";
 import MyModal from "../src/components/UI/MyModal/MyModal"
 import MyButton from "./components/UI/button/MyButton";
-import {usePosts} from "./components/hooks/usePosts";
-import axios from "axios";
+import {usePosts} from "./hooks/usePosts";
+import PostService from "./API/PostService";
+import Loader from "./components/UI/Loader/Loader";
 
 function App() {
 
@@ -27,9 +28,10 @@ function App() {
 
     const [modal, setModal] = useState(false);
     const sortedAndSeacrchedPosts = usePosts(posts, filter.sort, filter.query)
+    const [isPostsLoading, setIsPostsLoading] = useState(false) //Для лоадинга
 
     useEffect(() => {
-
+        fetchPosts().then(r => r)
     }, []); //Массив зависимости у нас пустой, чтобы функция отработала один раз, а так, если туда передавать, то будет вызываться при изменении
     // С зависимостями похоже на watch из vue. В deps можно передавать несколько параметров
 
@@ -49,8 +51,11 @@ function App() {
     }
 
     async function fetchPosts() {
-        const response = await axios.get('https://jsonplaceholder.typicode.com/posts')
-        setPosts(response.data)}
+        setIsPostsLoading(true) //Лоадинг
+        const posts = await PostService.getAll(); //В отдельном файле PostService создали функцию для запроса
+        setPosts(posts) //Передаем эти посты
+        setIsPostsLoading(false) //Убираем лоадинг
+    }
     return (
         <div className="App">
             <Counter/>
@@ -74,12 +79,14 @@ function App() {
                 filter={filter}
                 setFilter={setFilter}
             />
-
-            <PostList
-            posts={sortedAndSeacrchedPosts}
-            remove={removePost}
-            title="Посты про языки программирования"
-            />
+            {isPostsLoading
+            ? <div style={{display: 'flex', justifyContent: 'center', marginTop: '50px'}}><Loader/></div>
+            : <PostList
+                    posts={sortedAndSeacrchedPosts}
+                    remove={removePost}
+                    title="Посты про языки программирования"
+                />
+            }
 
         </div>
     );
